@@ -1,137 +1,139 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
 
 pthread_mutex_t head_p_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-struct nodo{
-  int dato;
-  struct nodo* sig;
+struct list_node_s{
+  int data;
+  struct list_node_s* next;
   pthread_mutex_t mutex;
 };
 
-int buscar(int valor, struct nodo* head_p){
-  struct nodo* p;
+int Member(int value, struct list_node_s* head_p){
+  struct list_node_s* temp_p;
   pthread_mutex_lock(&head_p_mutex);
-  p = head_p;
-
-  while(p != NULL && p->dato < valor){
-    if(p->sig != NULL) pthread_mutex_lock(&(p->sig->mutex));
-    if(p == head_p) pthread_mutex_unlock(&head_p_mutex);
-    pthread_mutex_unlock(&(p->mutex));
-    p = p->sig;
+  temp_p = head_p;
+  
+  while(temp_p != NULL && temp_p->data < value){
+    if(temp_p->next != NULL) pthread_mutex_lock(&(temp_p->next->mutex));
+    if(temp_p == head_p) pthread_mutex_unlock(&head_p_mutex);
+    pthread_mutex_unlock(&(temp_p->mutex));
+    temp_p = temp_p->next;
   }
-  if(p == NULL || p->dato > valor){
-    if(p == head_p) pthread_mutex_unlock(&head_p_mutex);
-    if(p != NULL) pthread_mutex_unlock(&(_p->mutex));
+  if(temp_p == NULL || temp_p->data > value){
+    if(temp_p == head_p) pthread_mutex_unlock(&head_p_mutex);
+    if(temp_p != NULL) pthread_mutex_unlock(&(temp_p->mutex));
     return 0;
   }
   else {
-    if(p == head_p) pthread_mutex_unlock(&head_p_mutex);
-    pthread_mutex_unlock(&(p->mutex));
+    if(temp_p == head_p) pthread_mutex_unlock(&head_p_mutex);
+    pthread_mutex_unlock(&(temp_p->mutex));
     return 1;
   }
 }
 
-int insertar(int valor, struct nodo** head_p){
+int Insert(int value, struct list_node_s** head_p){
   pthread_mutex_lock(&head_p_mutex);
   int flag = 0;
-  struct nodo* p = *head_p;
-  struct nodo* pred_p = NULL;
-  struct nodo* temp_p;
+  struct list_node_s* curr_p = *head_p;
+  struct list_node_s* pred_p = NULL;
+  struct list_node_s* temp_p;
 
-  while(p != NULL && p->dato < valor){
-    if(p->sig != NULL) pthread_mutex_lock(&(p->sig->mutex));
-    if(p == *head_p) pthread_mutex_unlock(&head_p_mutex);
-    pthread_mutex_unlock(&p->mutex);
-    pred_p = p;
-    p = p->sig;
+  
+  while(curr_p != NULL && curr_p->data < value){
+    if(curr_p->next != NULL) pthread_mutex_lock(&(curr_p->next->mutex));
+    if(curr_p == *head_p) pthread_mutex_unlock(&head_p_mutex);
+    pthread_mutex_unlock(&curr_p->mutex);
+    pred_p = curr_p;
+    curr_p = curr_p->next;
   }
 
-  if(p == NULL || p->dato > valor){
-    temp_p = malloc(sizeof(struct nodo));
-    temp_p->dato = valor;
-    temp_p->sig = p;
-    if(p == *head_p) flag = 1;
+  if(curr_p == NULL || curr_p->data > value){
+    temp_p = malloc(sizeof(struct list_node_s));
+    temp_p->data = value;
+    temp_p->next = curr_p;
+    if(curr_p == *head_p) flag = 1;
     if(pred_p == NULL)
       *head_p = temp_p;
-    else pred_p->sig = temp_p;
-    if(p != NULL) pthread_mutex_unlock(&p->mutex);
+    else pred_p->next = temp_p;
+    if(curr_p != NULL) pthread_mutex_unlock(&curr_p->mutex);
     if(flag==1)  pthread_mutex_unlock(&head_p_mutex);
     return 1;
   }
-  pthread_mutex_unlock(&p->mutex);
-  if(p == *head_p) pthread_mutex_unlock(&head_p_mutex);
+  pthread_mutex_unlock(&curr_p->mutex);
+  if(curr_p == *head_p) pthread_mutex_unlock(&head_p_mutex);
   else return 0;
 }
 
-int borrar(int valor, struct nodo** head_p){
+int Delete(int value, struct list_node_s** head_p){
   pthread_mutex_lock(&head_p_mutex);
-  struct nodo* p = *head_p;
-  struct nodo* pred_p = NULL;
+  struct list_node_s* curr_p = *head_p;
+  struct list_node_s* pred_p = NULL;
 
-  while(p != NULL && p->dato < valor){
-    if(p->sig != NULL) pthread_mutex_lock(&(p->sig->mutex));
-    if(p == *head_p) pthread_mutex_unlock(&head_p_mutex);
-    pthread_mutex_unlock(&p->mutex);
-    pred_p = p;
-    p = p->sig;
+  while(curr_p != NULL && curr_p->data < value){
+    if(curr_p->next != NULL) pthread_mutex_lock(&(curr_p->next->mutex));
+    if(curr_p == *head_p) pthread_mutex_unlock(&head_p_mutex);
+    pthread_mutex_unlock(&curr_p->mutex);
+    pred_p = curr_p;
+    curr_p = curr_p->next;
   }
-  if(p != NULL && p->dato == valor){
+  if(curr_p != NULL && curr_p->data == value){
     if(pred_p == NULL){
-      *head_p = p->sig;
-      pthread_mutex_unlock(&p->mutex);
+      *head_p = curr_p->next;
+      pthread_mutex_unlock(&curr_p->mutex);
       pthread_mutex_unlock(&head_p_mutex);
-      free(p);
+      free(curr_p);
     }
     else{
-      pred_p->sig = p->sig;
-      pthread_mutex_unlock(&p->mutex);
-      free(p);
+      pred_p->next = curr_p->next;
+      pthread_mutex_unlock(&curr_p->mutex);
+      free(curr_p);
     }
     return 1;
   }
   else{
-    if(p != NULL) pthread_mutex_unlock(&p->mutex);
-    if(p == *head_p) pthread_mutex_unlock(&head_p_mutex);
+    if(curr_p != NULL) pthread_mutex_unlock(&curr_p->mutex);
+    if(curr_p == *head_p) pthread_mutex_unlock(&head_p_mutex);
     return 0;
   }
 }
 
-struct nodo* list = NULL;
+struct list_node_s* list = NULL;
 
-void N_insertar(double ops){
+void N_Insert(double ops){
   double i;
   for(i = 0; i < ops; i++) {
-    insertar(1000,&list);
+    Insert(1000,&list);
   }
   return;
 }
 
-void N_buscar(double ops){
+void N_Member(double ops){
   double i;
   for(i = 0; i < ops; i++) {
-    buscar(1000,list);
+    Member(1000,list);
   }
   return;
 }
 
-void N_borrar(double ops){
+void N_Delete(double ops){
   double i;
   for(i = 0; i < ops; i++) {
-    borrar(1000,&list);
+    Delete(1000,&list);
   }
   return;
 
 }
 
-double buscados, insertados, borrados;
+double members, inserts, deletes;
 
-void* N_todo(void* rank){
+void* N_All(void* rank){
   long my_rank = (long) rank;
-  N_buscar(buscados);
-  N_insertar(insertados);
-  N_borrar(borrados);
+  N_Member(members);
+  N_Insert(inserts);
+  N_Delete(deletes);
   return NULL;
 }
 
@@ -139,26 +141,26 @@ int main(int argc, char* argv[]){
   long thread;
   double thread_count,i, elapsed;
   pthread_t *thread_handles;
-  struct nodo* list = NULL;
+  struct list_node_s* list = NULL;
   struct timespec begin,end;
   
   thread_count = strtol(argv[1],NULL,10);
   thread_handles = malloc(thread_count* sizeof(pthread_t));
 
-  scanf("%lf %lf %lf", &buscados, &insertados, &borrados);
+  scanf("%lf %lf %lf", &members, &inserts, &deletes);
 
-  buscados = (buscados * 1000.0)/thread_count;
-  insertados = (insertados * 1000.0)/thread_count;
-  borrados = (borrados * 1000.0)/thread_count;
+  members = (members * 1000.0)/thread_count;
+  inserts = (inserts * 1000.0)/thread_count;
+  deletes = (deletes * 1000.0)/thread_count;
 
   for(i = 0; i < 1000; i++){
-    insertar(i,&list);
+    Insert(i,&list);
   }
 
   clock_gettime(CLOCK_MONOTONIC, &begin);
-
+  
   for(thread = 0; thread < thread_count; thread++)
-    pthread_create(&thread_handles[thread], NULL, N_todo, (void*) thread);
+    pthread_create(&thread_handles[thread], NULL, N_All, (void*) thread);
   for(thread = 0; thread < thread_count; thread++)
     pthread_join(thread_handles[thread], NULL);
 
@@ -168,6 +170,5 @@ int main(int argc, char* argv[]){
   elapsed += (end.tv_nsec - begin.tv_nsec) / 1000000000.0;
 
   printf("%lf\n", elapsed);
-
   return 0;
 }

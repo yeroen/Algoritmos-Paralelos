@@ -4,59 +4,65 @@
 
 pthread_rwlock_t rwlock;
 
-struct nodo{
-  int dato;
-  struct nodo* sig;
+struct list_node_s{
+  int data;
+  struct list_node_s* next;
 };
 
-int buscar(int valor, struct nodo* head_p){
-  struct nodo* p = head_p;
-  while(p != NULL && p->dato < valor)
-    p = p->sig;
+int Member(int value, struct list_node_s* head_p){
+  struct list_node_s* curr_p = head_p;
 
-  if(p == NULL || p->dato > valor) return 0;
-  else return 1;
-}
-
-int insertar(int valor, struct nodo** head_p){
-  struct nodo* p = *head_p;
-  struct nodo* pred_p = NULL;
-  struct nodo* temp_p;
-
-  while(p != NULL && p->dato < valor){
-    pred_p = p;
-    p = p->sig;
+  while(curr_p != NULL && curr_p->data < value){
+    curr_p = curr_p->next;
   }
 
-  if(p == NULL || p->dato > valor){
-    temp_p = malloc(sizeof(struct nodo));
-    temp_p->dato = valor;
-    temp_p->sig = p;
+  if(curr_p == NULL || curr_p->data > value){
+    return 0;
+  }
+  else {
+    return 1;
+  }
+}
+
+int Insert(int value, struct list_node_s** head_p){
+  struct list_node_s* curr_p = *head_p;
+  struct list_node_s* pred_p = NULL;
+  struct list_node_s* temp_p;
+
+  while(curr_p != NULL && curr_p->data < value){
+    pred_p = curr_p;
+    curr_p = curr_p->next;
+  }
+
+  if(curr_p == NULL || curr_p->data > value){
+    temp_p = malloc(sizeof(struct list_node_s));
+    temp_p->data = value;
+    temp_p->next = curr_p;
     if(pred_p == NULL)
       *head_p = temp_p;
-    else pred_p->sig = temp_p;
+    else pred_p->next = temp_p;
     return 1;
   }
   else return 0;
 }
 
-int borrar(int valor, struct nodo** head_p){
-  struct nodo* p = *head_p;
-  struct nodo* pred_p = NULL;
+int Delete(int value, struct list_node_s** head_p){
+  struct list_node_s* curr_p = *head_p;
+  struct list_node_s* pred_p = NULL;
 
-  while(p != NULL && p->dato < valor){
-    pred_p = p;
-    p = p->sig;
+  while(curr_p != NULL && curr_p->data < value){
+    pred_p = curr_p;
+    curr_p = curr_p->next;
   }
 
-  if(p != NULL && p->dato == valor){
+  if(curr_p != NULL && curr_p->data == value){
     if(pred_p == NULL){
-      *head_p = p->sig;
-      free(p);
+      *head_p = curr_p->next;
+      free(curr_p);
     }
     else{
-      pred_p->sig = p->sig;
-      free(p);
+      pred_p->next = curr_p->next;
+      free(curr_p);
     }
     return 1;
   }
@@ -65,46 +71,46 @@ int borrar(int valor, struct nodo** head_p){
   }
 }
 
-struct nodo* list = NULL;
+struct list_node_s* list = NULL;
 
-void N_insertar(double ops){
+void N_Insert(double ops){
   double i;
   for(i = 0; i < ops; i++) {
     pthread_rwlock_wrlock(&rwlock);
-    insertar(1000,&list);
+    Insert(1000,&list);
     pthread_rwlock_unlock(&rwlock);
   }
   return;
 }
 
-void N_buscar(double ops){
+void N_Member(double ops){
   double i;
   for(i = 0; i < ops; i++) {
     pthread_rwlock_rdlock(&rwlock);
-    buscar(1000,list);
+    Member(1000,list);
     pthread_rwlock_unlock(&rwlock);
   }
   return;
 }
 
-void N_borrar(double ops){
+void N_Delete(double ops){
   double i;
   for(i = 0; i < ops; i++) {
     pthread_rwlock_wrlock(&rwlock);
-    borrar(1000,&list);
+    Delete(1000,&list);
     pthread_rwlock_unlock(&rwlock);
   }
   return;
 
 }
 
-double buscados, insertados, borrados;
+double members, inserts, deletes;
 
-void* N_todo(void* rank){
+void* N_All(void* rank){
   long my_rank = (long) rank;
-  N_buscar(buscados);
-  N_insertar(insertados);
-  N_borrar(borrados);
+  N_Member(members);
+  N_Insert(inserts);
+  N_Delete(deletes);
   return NULL;
 }
 
@@ -113,28 +119,28 @@ int main(int argc, char* argv[]){
   long thread;
   double thread_count,i, elapsed;
   pthread_t *thread_handles;
-  struct nodo* list = NULL;
+  struct list_node_s* list = NULL;
   struct timespec begin,end;
 
   pthread_rwlock_init(&rwlock,NULL);
-
+  
   thread_count = strtol(argv[1],NULL,10);
   thread_handles = malloc(thread_count* sizeof(pthread_t));
 
-  scanf("%lf %lf %lf", &buscados, &insertados, &borrados);
+  scanf("%lf %lf %lf", &members, &inserts, &deletes);
 
-  buscados = (buscados * 1000.0)/thread_count;
-  insertados = (insertados * 1000.0)/thread_count;
-  borrados = (borrados * 1000.0)/thread_count;
+  members = (members * 1000.0)/thread_count;
+  inserts = (inserts * 1000.0)/thread_count;
+  deletes = (deletes * 1000.0)/thread_count;
 
   for(i = 0; i < 1000; i++){
-    insertar(i,&list);
+    Insert(i,&list);
   }
 
   clock_gettime(CLOCK_MONOTONIC, &begin);
-
+  
   for(thread = 0; thread < thread_count; thread++)
-    pthread_create(&thread_handles[thread], NULL, N_todo, (void*) thread);
+    pthread_create(&thread_handles[thread], NULL, N_All, (void*) thread);
   for(thread = 0; thread < thread_count; thread++)
     pthread_join(thread_handles[thread], NULL);
 
